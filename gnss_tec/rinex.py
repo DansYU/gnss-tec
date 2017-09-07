@@ -36,7 +36,6 @@ class ObsFile(object):
             file,
             version=None,
             band_priority=BAND_PRIORITY,
-            pr_obs_priority=None,
             glo_freq_nums=None,
     ):
         """"""
@@ -46,32 +45,6 @@ class ObsFile(object):
             self.version = version
 
         self.band_priority = band_priority
-
-        if pr_obs_priority is None:
-            self.pr_obs_priority = {
-                GPS: (
-                    ('P', 'P'),
-                    ('C', 'C'),
-                    ('C', 'P')
-                ),
-                GLO: (
-                    ('P', 'P'),
-                    ('C', 'C'),
-                    ('C', 'P')
-                ),
-                GAL: (
-                    ('P', 'P'),
-                    ('C', 'C'),
-                    ('C', 'P')
-                ),
-                SBAS: (
-                    ('P', 'P'),
-                    ('C', 'C'),
-                    ('C', 'P')
-                ),
-            }
-        else:
-            self.pr_obs_priority = pr_obs_priority
 
         if glo_freq_nums is None:
             self.glo_freq_nums = {}
@@ -147,16 +120,42 @@ class ObsFileV2(ObsFile):
             file,
             version=None,
             band_priority=BAND_PRIORITY,
-            pr_obs_priority=None,
             glo_freq_nums=None,
+            pr_obs_priority=None,
     ):
         super(ObsFileV2, self).__init__(
             file,
             version=version,
             band_priority=band_priority,
-            pr_obs_priority=pr_obs_priority,
             glo_freq_nums=glo_freq_nums,
         )
+
+        if pr_obs_priority is None:
+            self.pr_obs_priority = {
+                GPS: (
+                    ('P', 'P'),
+                    ('C', 'C'),
+                    ('C', 'P')
+                ),
+                GLO: (
+                    ('P', 'P'),
+                    ('C', 'C'),
+                    ('C', 'P')
+                ),
+                GAL: (
+                    ('P', 'P'),
+                    ('C', 'C'),
+                    ('C', 'P')
+                ),
+                SBAS: (
+                    ('P', 'P'),
+                    ('C', 'C'),
+                    ('C', 'P')
+                ),
+            }
+        else:
+            self.pr_obs_priority = pr_obs_priority
+
         self._obs_types = set(self.obs_types)
 
     @staticmethod
@@ -481,14 +480,12 @@ class ObsFileV3(ObsFile):
             file,
             version=None,
             band_priority=BAND_PRIORITY,
-            pr_obs_priority=None,
             glo_freq_nums=None,
     ):
         super(ObsFileV3, self).__init__(
             file,
             version=version,
             band_priority=band_priority,
-            pr_obs_priority=pr_obs_priority,
             glo_freq_nums=glo_freq_nums,
         )
         self.obs_rec_indices = self._obs_slice_indices()
