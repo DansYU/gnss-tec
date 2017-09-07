@@ -149,7 +149,7 @@ def fetch_slot_freq_num(timestamp, slot, freq_nums):
     try:
         slot_freq_nums = freq_nums[slot]
     except KeyError:
-        msg = "Can't find slot {} in the glo_freq_nums dict."
+        msg = "Can't find the slot {} in the glo_freq_nums dict."
         raise KeyError(msg)
 
     dates_times = sorted(slot_freq_nums.keys())
@@ -167,5 +167,6 @@ def fetch_slot_freq_num(timestamp, slot, freq_nums):
         freq_num = slot_freq_nums[dates_times[0]]
         return freq_num
     else:
-        msg = "Can't find GLONASS frequency number for {}.".format(slot)
+        msg = "Can't find GLONASS frequency number for the slot {}."
+        msg = msg.format(slot)
         raise ValueError(msg)

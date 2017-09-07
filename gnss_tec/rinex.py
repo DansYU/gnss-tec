@@ -339,13 +339,17 @@ class ObsFileV2(ObsFile):
                 freq_num = None
                 if sat_sys == GLO:
                     slot = int(satellite[1:])
-                    freq_num = fetch_slot_freq_num(
-                        timestamp,
-                        slot,
-                        self.glo_freq_nums,
-                    )
+                    try:
+                        freq_num = fetch_slot_freq_num(
+                            timestamp,
+                            slot,
+                            self.glo_freq_nums,
+                        )
+                    except ValueError as err:
+                        warnings.warn(str(err))
+                        continue
 
-                # TODO: обернуть в одну ф-цию
+                # TODO: use a function
                 try:
                     if sat_sys not in phase_obs_index:
                         indices = self._get_obs_indices(
