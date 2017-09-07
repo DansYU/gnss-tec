@@ -1,15 +1,11 @@
-#!/usr/bin/env python
-# coding=utf8
-"""
-File: 
-Description: 
-"""
 from datetime import datetime
+from collections import defaultdict
+from io import StringIO
 
 import pytest
 
-from gnss_tec.tec import Tec
-from gnss_tec.tec import TecError
+from gnss_tec import rnx
+from gnss_tec.glo import collect_freq_nums
 
 TEST_RINEX = '''\
      2.11           OBSERVATION DATA    M (MIXED)           RINEX VERSION / TYPE
@@ -129,148 +125,50 @@ teqc  2013Mar15     GPS Operator        20160102  0:05:     COMMENT
 '''
 
 
-def test_tec_get_freq():
-    tec = Tec(datetime.today(), 'GLO', 'G15')
-
-    obs_code = {
-        1: 'L1',
-        2: 'L5'
-    }
-
-    standard_f = {
-        1: 1575.42e+06,
-        2: 1176.45e+06
-    }
-
-    test_f = tec.get_freq(obs_code)
-    for b in 1, 2:
-        assert test_f[b] == standard_f[b]
-
-
-def test_tec_get_freq_unknown():
-    tec = Tec(datetime.today(), '   ', 'X15')
-    obs_code = {
-        1: 'X1',
-        2: 'X2',
-    }
-    with pytest.raises(TecError):
-        freq = tec.get_freq(obs_code)
-
-
-def test_tec_get_freq_glo():
-    tec = Tec(datetime(2016, 1, 1), 'GPS', 'R22', -3)
-
-    obs_code = {
-        1: 'L1',
-        2: 'L2'
-    }
-    std_freq = {
-        1: 1602e+06 + -3 * 562.5e+03,
-        2: 1246e+06 + -3 * 437.5e+03
-    }
-
-    test_freq = tec.get_freq(obs_code)
-    for b in 1, 2:
-        assert test_freq[b] == std_freq[b]
-
-
-def test_tec_phase_tec():
-    tec = Tec(datetime(2016, 1, 1), 'GPS', 'G01')
-
-    tec.phase = {
-        1: 134680873.916,
-        2: 104946140.779
-    }
-
-    tec.phase_code = {
-        1: 'L1',
-        2: 'L2'
-    }
-
-    res = tec.phase_tec
-    assert pytest.approx(res, -12.226)
-
-
-def test_tec_phase_tec_0():
-    tec = Tec(datetime(2016, 1, 1), 'GPS', 'G01')
-
-    tec.phase = {
-        1: 0.,
-        2: 104946140.779
-    }
-
-    tec.phase_code = {
-        1: 'L1',
-        2: 'L2'
-    }
-
-    assert tec.phase_tec is None
-
-
-def test_tec_pr_tec():
-    tec = Tec(datetime(2016, 1, 1), 'GPS', 'G01')
-
-    # 25475915.229 25475919.584 41.450
-    tec.p_range = {
-        1: 25475915.229,
-        2: 25475919.584
-    }
-
-    tec.p_range_code = {
-        1: 'P1',
-        2: 'P2'
-    }
-
-    res = tec.p_range_tec
-    pytest.approx(res, 41.450)
-
-
-def test_tec_pr_tec_0():
-    tec = Tec(datetime(2016, 1, 1), 'GPS', 'G01')
-
-    tec.p_range = {
-        1: 25475915.229,
-        2: 0.
-    }
-
-    tec.p_range_code = {
-        1: 'P1',
-        2: 'P2'
-    }
-
-    assert tec.p_range_tec is None
-
-
-def test_tec_init():
-    with pytest.raises(TecError):
-        Tec(datetime(2016, 1, 1), 'GPS', 'R01')
-
-
-def test_validity():
-    tec = Tec(
-        datetime(2016, 1, 1),
-        'GPS',
-        'G01',
+def test_rnx():
+    """"""
+    std_tec = dict(
+        E12=(datetime(2016, 1, 1, 0, 0), -34.0509, 28.9138, 8),
+        R11=(datetime(2016, 1, 1, 0, 0), -11.4876, 76.8256, 0),
+        G14=(datetime(2016, 1, 1, 0, 0), -12.1819, 6.71, 0),
+        G15=(datetime(2016, 1, 1, 0, 0), -90.5184, -10.4885, 0),
+        R01=(datetime(2016, 1, 1, 0, 0), -53.9433, 85.8261, 0),
+        G20=(datetime(2016, 1, 1, 0, 0), -92.5134, -12.2874, 0),
+        E19=(datetime(2016, 1, 1, 0, 0), -90.177, 33.3615, 8),
+        G10=(datetime(2016, 1, 1, 0, 0), -14.9274, 13.3153, 0),
+        E11=(datetime(2016, 1, 1, 0, 0), -32.5192, 18.1478, 8),
+        R02=(datetime(2016, 1, 1, 0, 0), -55.9082, 66.8781, 0),
+        G21=(datetime(2016, 1, 1, 0, 0), -0.7346, -14.6287, 0),
+        R24=(datetime(2016, 1, 1, 0, 0), 7.2404, 59.6137, 0),
+        G18=(datetime(2016, 1, 1, 0, 0), -38.3506, -8.09009, 0),
+        G22=(datetime(2016, 1, 1, 0, 0), -8.2461, 12.1351, 0),
+        G24=(datetime(2016, 1, 1, 0, 0), -83.9452, 11.1833, 0),
+        G29=(datetime(2016, 1, 1, 0, 0), -23.7813, 12.6015, 0),
+        G12=(datetime(2016, 1, 1, 0, 0), 18.6661, 7.4809, 0),
+        G13=(datetime(2016, 1, 1, 0, 0), -76.0586, -48.3216, 0),
+        R13=(datetime(2016, 1, 1, 0, 0), 5.1096, 106.0223, 0),
+        R12=(datetime(2016, 1, 1, 0, 0), -19.2083, 84.1176, 0),
+        R18=(datetime(2016, 1, 1, 0, 0), 19.25606, 75.4477, 0),
+        R03=(datetime(2016, 1, 1, 0, 0), -16.576001, 72.6929, 0),
     )
 
-    tec.phase = {
-        1: 134680873.916,
-        2: 104946140.779
-    }
+    rinex_file = StringIO(TEST_RINEX)
+    nav_file = StringIO(TEST_NAV)
+    glo_freq_nums = collect_freq_nums(nav_file)
 
-    tec.p_range = {
-        1: 25475915.229,
-        2: 0
-    }
+    tec = defaultdict()
+    for tec_obj in rnx(rinex_file, glo_freq_nums=glo_freq_nums):
+        tec[tec_obj.satellite] = (
+            tec_obj.timestamp,
+            tec_obj.phase_tec,
+            tec_obj.p_range_tec,
+            tec_obj.validity,
+        )
 
-    tec.lli = {
-        1: 0,
-        2: 1
-    }
+    for sat in tec:
+        std_ts, std_phase_tec, std_pr_tec, std_val = std_tec[sat]
+        ts, phase_tec, pr_tec, val = tec[sat]
 
-    validity = 2 ** 4 + 2 ** 2
-
-    assert validity == tec.validity
-
-
-
+        pytest.approx(std_phase_tec, phase_tec)
+        pytest.approx(std_pr_tec, pr_tec)
+        assert std_val == val

@@ -11,12 +11,12 @@ from .rinex import ObsFileV3
 from .glo import collect_freq_nums
 
 # General information
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 __author__ = __maintainer__ = 'Ilya Zhivetiev'
 __email__ = 'i.zhivetiev@gnss-lab.org'
 
 
-def rnx(file, band_priority=BAND_PRIORITY, glo_freq_nums=None):
+def rnx(file, **kwargs):
     """Return a reader object which will iterate over observation records in
     the given file. Each iteration will return Tec object. The file can be any
     object which supports iterator protocol.
@@ -32,8 +32,13 @@ def rnx(file, band_priority=BAND_PRIORITY, glo_freq_nums=None):
     reader : iterator
         Yields Tec object for each satellite of the epoch.
     """
-    if glo_freq_nums is None:
-        glo_freq_nums = {}
+    band_priority = kwargs.pop('band_priority', BAND_PRIORITY)
+    glo_freq_nums = kwargs.pop('glo_freq_nums', {})
+
+    if kwargs:
+        for k in kwargs:
+            msg = 'Unknown parameter: {}'.format(kwargs[k])
+            raise ValueError(msg)
 
     try:
         row = next(file)
