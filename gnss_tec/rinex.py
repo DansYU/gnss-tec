@@ -166,7 +166,7 @@ class ObsFileV2(ObsFile):
         return line + ' ' * (80 - len(line))
 
     @staticmethod
-    def _get_obs_indices(obs_types, band_priority, obs_priority):
+    def indices_according_priority(obs_types, band_priority, obs_priority):
         """Return indices from obs_types list according to band_priority
          and obs_priority.
 
@@ -351,7 +351,7 @@ class ObsFileV2(ObsFile):
                 # TODO: use a function
                 try:
                     if sat_sys not in phase_obs_index:
-                        indices = self._get_obs_indices(
+                        indices = self.indices_according_priority(
                             self.obs_types,
                             self.band_priority[sat_sys],
                             (('L', 'L'),),
@@ -367,7 +367,7 @@ class ObsFileV2(ObsFile):
                         }
 
                     if sat_sys not in pr_obs_index:
-                        indices = self._get_obs_indices(
+                        indices = self.indices_according_priority(
                             self.obs_types,
                             self.band_priority[sat_sys],
                             self.pr_obs_priority[sat_sys],
@@ -481,6 +481,7 @@ class ObsFileV3(ObsFile):
             version=None,
             band_priority=BAND_PRIORITY,
             glo_freq_nums=None,
+            obs_channel_priority=None,
     ):
         super(ObsFileV3, self).__init__(
             file,
@@ -488,6 +489,11 @@ class ObsFileV3(ObsFile):
             band_priority=band_priority,
             glo_freq_nums=glo_freq_nums,
         )
+
+        if obs_channel_priority is None:
+            obs_channel_priority = {}
+        self.obs_channel_priority = obs_channel_priority
+
         self.obs_rec_indices = self._obs_slice_indices()
 
         self.phase_obs_codes = None
@@ -739,48 +745,72 @@ class ObsFileV3(ObsFile):
         return obs_types
 
     def indices_according_priority(self, sat_system):
-        """Return obs_types indices according band priority."""
+        """Return obs_types indices according band/channel priority.
 
-        def code(current_codes, all_codes):
+        """
+        def available_indices(current_codes, all_codes):  # available indices
             union = set(current_codes) & set(all_codes)
             return [all_codes.index(c) for c in union]
 
-        def indices(b_priority, ot_indices):
-            for first_band, second_band in b_priority:
-                if ot_indices[first_band] and ot_indices[second_band]:
+        def band_indices(priority, indices):  # indices a
+            for first_band, second_band in priority:
+                if indices[first_band] and indices[second_band]:
                     return {
-                        1: ot_indices[first_band][0],
-                        2: ot_indices[second_band][0],
+                        1: indices[first_band],
+                        2: indices[second_band],
                     }
             msg = "Can't find any observations to calculate TEC."
             raise ValueError(msg)
+
+        def channel_indices(priority, indices, obs_types):
+            # TODO: channel_indices
+            """
+            для каждой частоты
+             выбрать наблюдения
+             выбрать согласно приоритету
+
+             выбрать первый попавшийся
+             присвоить возвращаемому значению
+             если совпадает с первым - присвоить возвращаемому занчению
+              и преревать
+             если нет - повторит
+             вернить возвращаемое значение
+            """
+            for b in indices:
+                pass
 
         obs_types = self.obs_types[sat_system]
 
         bands = self.bands[sat_system]
         band_priority = self.band_priority[sat_system]
+        channel_priority = self.obs_channel_priority[sat_system]
 
-        phase_obs_codes = self.phase_obs_codes[sat_system]
-        pr_obs_codes = self.prange_obs_codes[sat_system]
+        phase_codes = self.phase_obs_codes[sat_system]
+        p_range_codes = self.prange_obs_codes[sat_system]
 
-        phase_ot_indices = dict(
+        phase_indices = dict(
             zip(bands, (None,) * 3)
         )
-        pr_ot_indices = dict(
+        p_range_indices = dict(
             zip(bands, (None,) * 3)
         )
 
         for b in bands:
-            phase_ot_indices[b] = code(phase_obs_codes[b], obs_types)
-            pr_ot_indices[b] = code(pr_obs_codes[b], obs_types)
+            phase_indices[b] = available_indices(phase_codes[b], obs_types)
+            p_range_indices[b] = available_indices(p_range_codes[b], obs_types)
 
-        phase_indices = indices(band_priority, phase_ot_indices)
-        pr_indices = indices(band_priority, pr_ot_indices)
+        phase_indices = band_indices(band_priority, phase_indices)
+        p_range_indices = band_indices(band_priority, p_range_indices)
 
-        return self._obsrevation_indices(phase_indices, pr_indices)
+        phase_indices = channel_indices(channel_priority, phase_indices, obs_types)
+        p_range_indices = channel_indices(channel_priority, p_range_indices, obs_types)
+
+        return self._obsrevation_indices(phase_indices, p_range_indices)
 
     def next_tec(self):
-        """Yields Tec object."""
+        """Yields Tec object.
+
+        """
         obs_indices = {}
 
         while True:
