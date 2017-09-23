@@ -748,6 +748,7 @@ class ObsFileV3(ObsFile):
         """Return obs_types indices according band/channel priority.
 
         """
+
         def available_indices(current_codes, all_codes):  # available indices
             union = set(current_codes) & set(all_codes)
             return [all_codes.index(c) for c in union]
@@ -762,22 +763,32 @@ class ObsFileV3(ObsFile):
             msg = "Can't find any observations to calculate TEC."
             raise ValueError(msg)
 
-        def channel_indices(priority, indices, obs_types):
-            # TODO: channel_indices
-            """
-            для каждой частоты
-             выбрать наблюдения
-             выбрать согласно приоритету
+        def get_channel_indices(priority, indices, obs_types):
+            channel = dict()
+            channel_indices = dict()
 
-             выбрать первый попавшийся
-             присвоить возвращаемому значению
-             если совпадает с первым - присвоить возвращаемому занчению
-              и преревать
-             если нет - повторит
-             вернить возвращаемое значение
-            """
             for b in indices:
-                pass
+                channel[b] = [(obs_types[i][2], i) for i in indices[b]]
+
+            for b in channel:
+                if b not in priority:
+                    channel_indices[b] = channel[b][0][1]
+                    break
+
+                for pri_ch in priority[b]:
+                    for ch, i in channel[b]:
+                        if pri_ch == ch:
+                            channel_indices[b] = i
+                            break
+
+                    if b in channel_indices:
+                        break
+
+            for b in channel:
+                if b not in channel_indices:
+                    channel_indices[b] = channel[b][0][1]
+
+            return channel_indices
 
         obs_types = self.obs_types[sat_system]
 
@@ -802,8 +813,17 @@ class ObsFileV3(ObsFile):
         phase_indices = band_indices(band_priority, phase_indices)
         p_range_indices = band_indices(band_priority, p_range_indices)
 
-        phase_indices = channel_indices(channel_priority, phase_indices, obs_types)
-        p_range_indices = channel_indices(channel_priority, p_range_indices, obs_types)
+        phase_indices = get_channel_indices(
+            channel_priority,
+            phase_indices,
+            obs_types,
+        )
+
+        p_range_indices = get_channel_indices(
+            channel_priority,
+            p_range_indices,
+            obs_types,
+        )
 
         return self._obsrevation_indices(phase_indices, p_range_indices)
 

@@ -246,7 +246,8 @@ def test_next_tec(obs):
 
 
 def test_attr(attr_obs):
-    for tec in attr_obs:
-        print(tec)
+    sat_sys = 'G'
+    test_indeces = ({1: 9, 2: 11}, {1: 0, 2: 3})
+    indices = attr_obs.indices_according_priority(sat_sys)
 
-    assert True
+    assert test_indeces == indices
